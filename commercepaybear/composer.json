@@ -1,0 +1,15 @@
+{
+  "name": "ethercreative/commerce-paybear",
+  "description": "PayBear.io integration with Craft Commerce.",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Tam",
+      "email": "tam@ethercreative.co.uk"
+    }
+  ],
+  "require": {},
+  "autoload": {
+    "psr-4": { "Omnipay\\PayBear\\" : "Gateways/PayBear/" }
+  }
+}
