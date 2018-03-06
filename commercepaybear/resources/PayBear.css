@@ -1,0 +1,238 @@
+/* Container
+/* -------------------------------------------------------------------------- */
+
+.paybear--container {
+	position: relative;
+}
+
+/* Spinner
+/* -------------------------------------------------------------------------- */
+
+.paybear--spinner {
+	position: absolute;
+	z-index: 3;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+
+	background-color: rgba(255,255,255,0.8);
+
+	opacity: 0;
+	pointer-events: none;
+	transition: opacity 0.3s ease;
+}
+
+.paybear--spinner.show {
+	opacity: 1;
+	pointer-events: all;
+}
+
+.paybear--spinner:before {
+	content: '';
+	position: absolute;
+	top: 50%;
+	left: 50%;
+
+	display: block;
+	width: 30px;
+	height: 30px;
+
+	border: 5px solid #D8D8D8;
+	border-top-color: transparent;
+	border-radius: 50%;
+
+	animation: commercePayBearSpin 1s linear infinite;
+}
+
+@keyframes commercePayBearSpin {
+	from {
+		-webkit-transform: translate3d(-50%, -50%, 0) rotate(0deg);
+		-moz-transform: translate3d(-50%, -50%, 0) rotate(0deg);
+		-ms-transform: translate3d(-50%, -50%, 0) rotate(0deg);
+		-o-transform: translate3d(-50%, -50%, 0) rotate(0deg);
+		transform: translate3d(-50%, -50%, 0) rotate(0deg);
+	}
+	to {
+		-webkit-transform: translate3d(-50%, -50%, 0) rotate(360deg);
+		-moz-transform: translate3d(-50%, -50%, 0) rotate(360deg);
+		-ms-transform: translate3d(-50%, -50%, 0) rotate(360deg);
+		-o-transform: translate3d(-50%, -50%, 0) rotate(360deg);
+		transform: translate3d(-50%, -50%, 0) rotate(360deg);
+	}
+}
+
+/* Currencies
+/* -------------------------------------------------------------------------- */
+
+.paybear--currencies {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	grid-gap: 10px;
+	margin: 0;
+	padding: 0;
+
+	list-style: none;
+}
+.paybear--currencies li {
+	margin: 0;
+	padding: 0;
+}
+.paybear--currencies button {
+	display: block;
+	width: 100%;
+	height: 100%;
+	padding: 10px;
+
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+
+	background: none;
+	border: 1px solid #D8D8D8;
+	border-radius: 0;
+
+	cursor: pointer;
+}
+.paybear--currencies button:hover {
+	border-color: #aaa;
+}
+.paybear--currencies img {
+	width: 40px;
+	height: 40px;
+	vertical-align: middle;
+	margin-bottom: 5px;
+}
+.paybear--currencies span {
+	display: block;
+	font-weight: normal;
+	line-height: 1.5em;
+	letter-spacing: 0;
+	text-transform: none;
+}
+
+.paybear--currencies-code {
+	font-size: 16px;
+}
+
+.paybear--currencies-title,
+.paybear--currencies-rate {
+	color: #9B9B9B;
+	font-size: 14px;
+}
+
+/* Pay
+/* -------------------------------------------------------------------------- */
+
+.paybear--pay-header {
+	display: flex;
+	align-items: center;
+	padding: 10px;
+
+	background-color: rgba(94,127,205,.1);
+	border-radius: 10px;
+}
+
+.paybear--pay-header-timer {
+	margin-right: 10px;
+	padding: 5px 10px;
+
+	color: #fff;
+	font-size: 23px;
+	font-weight: bold;
+	line-height: normal;
+
+	background-color: #5e7fcd;
+	border-radius: 5px;
+}
+
+.paybear--pay-header-lock {
+	flex-grow: 1;
+
+	color: #5e7fcd;
+	font-size: 16px;
+	font-weight: bold;
+}
+.paybear--pay-header-lock small {
+	display: block;
+
+	color: #b8bcc4;
+	font-size: 12px;
+	font-weight: bold;
+	text-transform: uppercase;
+}
+
+.paybear--pay-amount {
+	padding: 30px;
+	text-align: center;
+}
+
+.paybear--pay-amount img {
+	width: 60px;
+	height: 60px;
+	vertical-align: middle;
+	margin-bottom: 10px;
+}
+
+.paybear--pay-amount-total {
+	font-size: 30px;
+	font-weight: bold;
+}
+
+/* Payment Methods
+/* -------------------------------------------------------------------------- */
+
+.paybear--pay-methods p {
+	margin: 0;
+
+	color: #9B9B9B;
+	font-size: 16px;
+	letter-spacing: 0;
+	text-align: center;
+	line-height: 26px;
+}
+
+.paybear--pay-methods-switch {
+	display: block;
+	width: 100%;
+	max-width: 400px;
+	margin: 0 auto 30px;
+	padding: 5px;
+
+	border: 1px solid #D8D8D8;
+	border-radius: 100px;
+}
+
+.paybear--pay-methods-switch button {
+	display: inline-block;
+	width: 33.3333%;
+	height: auto;
+	margin: 0;
+	padding: 5px;
+
+	color: #9B9B9B;
+	font-size: 16px;
+	text-align: center;
+	text-transform: uppercase;
+
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	appearance: none;
+	border: none;
+	border-radius: 100px;
+	cursor: pointer;
+
+	transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.paybear--pay-methods-switch button.active {
+	color: #fff;
+	background-color: #5e7fcd;
+}
+
+.paybear--pay-methods p.paybear--pay-methods-address {
+	color: #000000;
+	font-size: 20px;
+	font-weight: bold;
+	font-family: "PT Mono", "Consolas", "Bitstream Vera Sans Mono", "Courier New", Courier, monospace;
+}
