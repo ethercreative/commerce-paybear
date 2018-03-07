@@ -104,6 +104,9 @@ PayBear.prototype._startLockTimer = function () {
 	if (!this.countDown)
 		throw new Error("Tried to start lock timer without count down element!");
 	
+	// TODO: Make this duration definable by the config
+	// TODO: Add server side checks to enforce this
+	
 	const self = this;
 	this.countDown.textContent = "15:00";
 	
@@ -204,6 +207,22 @@ PayBear.prototype._onPaymentMethodSwitchClick = function (method, e) {
 	this.setState({
 		activePaymentMethod: method,
 	});
+};
+
+/**
+ * Triggered when the user clicks a "Copy" button
+ *
+ * @param {string} str - String to copy
+ * @param {Event} e
+ * @private
+ */
+PayBear.prototype._onCopy = function (str, e) {
+	e.preventDefault();
+	e.target.classList.add("copied");
+	setTimeout(function () {
+		e.target.classList.remove("copied");
+	}, 1000);
+	PayBear.copy(str);
 };
 
 // Render
@@ -309,6 +328,7 @@ PayBear.prototype._renderStep1 = function () {
 		]),
 		
 		c("button", {
+			"class": "paybear--back",
 			"click": this._onBack.bind(this),
 		}, "← Back"),
 		
@@ -316,13 +336,18 @@ PayBear.prototype._renderStep1 = function () {
 			c("img", { src: curr.icon, alt: curr.title }),
 			c("div", {
 				"class": "paybear--pay-amount-total"
-			}, (this.state.amount / curr.mid).toFixed(8) + " " + curr.code),
+			}, this._getCryptoAmount() + " " + curr.code),
 		]),
 		
 		this.paymentMethods,
 	];
 };
 
+/**
+ * Renders the payment methods
+ *
+ * @private
+ */
 PayBear.prototype._renderPaymentMethods = function () {
 	const c = PayBear.c
 		, self = this;
@@ -337,18 +362,36 @@ PayBear.prototype._renderPaymentMethods = function () {
 	
 	switch (active.toLowerCase()) {
 		case "wallet":
-			method = c("div", {}, "Wallet");
+			method = c("div", {
+				"class": "paybear--pay-methods-btns paybear--pay-methods-wallet"
+			}, [
+				c("a", {
+					href: this._getWalletUrl(),
+					target: "_blank"
+				}, "Open in Wallet"),
+			]);
 			break;
 		case "copy":
 			method = c("div", {
-				"class": "paybear--pay-methods-copy"
+				"class": "paybear--pay-methods-btns paybear--pay-methods-copy"
 			}, [
-				c("button", {}, "Copy Address"),
-				c("button", {}, "Copy Amount"),
+				c("button", {
+					click: this._onCopy.bind(this, this.state.address),
+				}, "Copy Address"),
+				c("button", {
+					click: this._onCopy.bind(this, this._getCryptoAmount()),
+				}, "Copy Amount"),
 			]);
 			break;
 		case "scan":
-			method = c("div", {}, "Scan");
+			method = c("div", {
+				"class": "paybear--pay-methods-scan"
+			}, [
+				c("img", {
+					"src": this._getQRCode(),
+					"srcset": this._getQRCode(true),
+				})
+			]);
 			break;
 	}
 	
@@ -358,6 +401,9 @@ PayBear.prototype._renderPaymentMethods = function () {
 			{ "class": "paybear--pay-methods-switch" },
 			["Wallet", "Copy", "Scan"].map(function (method) {
 				const handle = method.toLowerCase();
+				
+				if (handle === "wallet" && !curr.walletLink)
+					return null;
 				
 				return c("button", {
 					"class": active === handle ? "active" : "",
@@ -408,6 +454,58 @@ PayBear.prototype._action = function (handle, body, callback) {
 		fd.append(a[0], a[1]);
 	});
 	xhr.send(fd);
+};
+
+/**
+ * Returns the amount of the order in cryptocurrency
+ *
+ * @return {string}
+ * @private
+ */
+PayBear.prototype._getCryptoAmount = function () {
+	return (this.state.amount / this.state.selectedCurrency.mid).toFixed(8);
+};
+
+/**
+ * Returns the current wallet URL
+ *
+ * @return {string}
+ * @private
+ */
+PayBear.prototype._getWalletUrl = function () {
+	if (!this.state.selectedCurrency.walletLink)
+		return "";
+	
+	return this.state.selectedCurrency.walletLink.replace(
+		/%s(.+?)%s/,
+		this.state.address + "$1" + this._getCryptoAmount()
+	);
+};
+
+/**
+ * Generates a QR code image URL
+ *
+ * @param {boolean=} x2 - If true, a 2x srcset string will be returned
+ * @return {string}
+ * @private
+ */
+PayBear.prototype._getQRCode = function (x2) {
+	const curr = this.state.selectedCurrency
+		, addr = this.state.address;
+	
+	let comp = encodeURIComponent(addr);
+	
+	if (curr.walletLink)
+		comp = encodeURIComponent(this._getWalletUrl());
+	
+	if (!x2)
+		return "https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl=" + comp;
+	
+	return "https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl="
+	       + comp
+	       + " 1x, https://chart.googleapis.com/chart?chs=360x360&cht=qr&chl="
+	       + comp
+	       + " 2x";
 };
 
 /**
@@ -494,6 +592,32 @@ PayBear.c = function (tag, attributes, children) {
 	});
 	
 	return elem;
+};
+
+/**
+ * Copies the given string to the users clipboard
+ *
+ * @param {string} string - String to copy
+ */
+PayBear.copy = function (string) {
+	const ta = PayBear.c(
+		"textarea",
+		{
+			style: "position:fixed;top:0;left:0;width:2em;height:2em;padding:0;"
+			       + "border:none;outline:none;box-shadow:none;"
+			       + "background:transparent;",
+		}
+	);
+	
+	ta.value = string;
+	document.body.appendChild(ta);
+	ta.select();
+	
+	try {
+		document.execCommand('copy');
+	} catch (e) {}
+	
+	document.body.removeChild(ta);
 };
 
 window.PayBear = PayBear;
