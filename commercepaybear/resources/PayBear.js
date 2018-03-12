@@ -275,6 +275,9 @@ PayBear.prototype._renderStep0 = function () {
 			"ul",
 			{ "class": "paybear--currencies" },
 			this.state.currencies.map(function (currency) {
+				if (!self._isAboveMinimum(currency))
+					return null;
+				
 				return c("li", {}, [
 					c("button", {
 						"click": self._onSelectCurrency.bind(self, currency)
@@ -464,6 +467,11 @@ PayBear.prototype._action = function (handle, body, callback) {
  */
 PayBear.prototype._getCryptoAmount = function () {
 	return (this.state.amount / this.state.selectedCurrency.mid).toFixed(8);
+};
+
+PayBear.prototype._isAboveMinimum = function (curr) {
+	const amount = (this.state.amount / curr.mid).toFixed(8);
+	return amount >= curr.minimum;
 };
 
 /**
