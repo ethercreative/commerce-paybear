@@ -12,32 +12,6 @@ class PurchaseRequest extends AbstractRequest
 	// Getters & Setters
 	// =========================================================================
 
-	// Getters & Setters: API Key
-	// -------------------------------------------------------------------------
-
-	public function getApiSecretKey ()
-	{
-		return $this->getParameter('apiSecretKey');
-	}
-
-	public function setApiSecretKey ($value)
-	{
-		return $this->setParameter('apiSecretKey', $value);
-	}
-
-	// Getters & Setters: Currency
-	// -------------------------------------------------------------------------
-
-	public function getCurrency ()
-	{
-		return $this->getParameter('currency');
-	}
-
-	public function setCurrency ($value)
-	{
-		return $this->setParameter('currency', $value);
-	}
-
 	// Getters & Setters: Order
 	// -------------------------------------------------------------------------
 
@@ -81,17 +55,7 @@ class PurchaseRequest extends AbstractRequest
 	 */
 	public function sendData ($data)
 	{
-		$token  = $this->getApiSecretKey();
-		$crypto = $this->getCurrency();
-		$notify = urlencode($this->getNotifyUrl());
-
-		$endPoint = "https://api.paybear.io/v2/{$crypto}/payment/{$notify}?token={$token}";
-
-		return $this->response = new PurchaseResponse(
-			$this,
-			$data,
-			$endPoint
-		);
+		return $this->response = new Response($this, null);
 	}
 
 }

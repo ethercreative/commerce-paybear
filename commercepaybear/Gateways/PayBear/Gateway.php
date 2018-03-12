@@ -40,7 +40,7 @@ class Gateway extends AbstractGateway
 	public function completePurchase (array $parameters = [])
 	{
 		return $this->createRequest(
-			"\Omnipay\PayBear\Message\CompletePurchaseRequest",
+			"\Omnipay\PayBear\Message\PurchaseRequest",
 			$parameters
 		);
 	}

@@ -2,6 +2,9 @@
 
 namespace Craft;
 
+use Commerce\Gateways\PaymentFormModels\BasePaymentFormModel;
+use Commerce\Gateways\PaymentFormModels\OffsitePaymentFormModel;
+
 class CommercePayBearController extends BaseController {
 
 	protected $allowAnonymous = true;
@@ -9,6 +12,26 @@ class CommercePayBearController extends BaseController {
 	public function actionCurrency ()
 	{
 		$this->returnJson($this->_getCurrencies());
+	}
+
+	/**
+	 * Returns the config for the embed
+	 */
+	public function actionConfig ()
+	{
+		/** @var Commerce_OrderModel $cart */
+		$cart = craft()->commerce_cart->getCart();
+
+		$this->returnJson([
+			'currencies' => array_values($this->_getCurrencies()),
+			'fiatValue' => $cart->totalPrice,
+			'fiatCurrency' => $cart->paymentCurrency,
+			'fiatSign' => '',
+
+			'statusUrl' => UrlHelper::getActionUrl('CommercePayBear/status', [
+				'orderId' => $cart->id,
+			]),
+		]);
 	}
 
 	/**
@@ -26,7 +49,7 @@ class CommercePayBearController extends BaseController {
 		);
 
 		// Get the currency code
-		$code = strtolower(craft()->request->getRequiredPost('code'));
+		$code = strtolower(craft()->request->getRequiredParam('code'));
 
 		// Calculate the amount
 		$curr = $this->_getCurrencies()[$code];
@@ -38,7 +61,7 @@ class CommercePayBearController extends BaseController {
 			'https://api.paybear.io/v2/%s/payment/%s?token=%s',
 			$code,
 			urlencode($callbackUrl),
-			craft()->config->get('apiKey', 'commercepaybear')
+			$this->_getPaymentMethod()->settings['apiSecretKey']
 		);
 
 		// Request the payment URL
@@ -82,8 +105,15 @@ class CommercePayBearController extends BaseController {
 	 */
 	public function actionCallback ()
 	{
+		HeaderHelper::setContentTypeByExtension('txt');
+
 		$orderId = craft()->request->getRequiredParam('orderId');
 		$data = file_get_contents('php://input');
+
+		if (!$data) die();
+
+		$data = json_decode($data);
+		$invoice = $data->invoice;
 
 		/** @var Commerce_OrderModel $order */
 		$order = craft()->commerce_orders->getOrderById($orderId);
@@ -95,65 +125,50 @@ class CommercePayBearController extends BaseController {
 				LogLevel::Error,
 				true
 			);
-			return;
+			die('Unable to find order');
 		}
 
 		/** @var CommercePayBearRecord $record */
 		$record = CommercePayBearRecord::model()->findByAttributes([
 			'orderId' => $orderId,
-			'invoice' => $data['invoice'],
+			'invoice' => $invoice,
 		]);
 
 		// Ensure we have a payment record
 		if (!$record) {
 			CommercePayBearPlugin::log(
 				'Attempted to run callback on non-existent payment for Order: '
-				. $orderId . ', Invoice: ' . $data['invoice'],
+				. $orderId . ', Invoice: ' . $invoice,
 				LogLevel::Warning,
 				true
 			);
-			return;
+			die('Attempted to run callback on non-existent payment');
 		}
 
 		// Get the confirmations & amount paid
-		$confirmations = (int) $data['confirmations'];
-		$amount = (float) $data['inTransaction']['amount'];
-
-		// If this is the first confirmation...
-		if ($record->confirmations == 0) {
-			$startTime = $record->timeStarted;
-			$timeSincePossibleStart = (new DateTime())->modify('-15 minutes');
-
-			// If the start timestamp is less than the possible start timestamp
-			if ($startTime->getTimestamp() < $timeSincePossibleStart->getTimestamp()) {
-				// TODO: Should we refund anything that had been paid? How?
-				$record->message = [
-					'type' => 'error',
-					'message' => 'This payment has expired',
-				];
-				$record->save();
-				return;
-			}
-		}
+		$confirmations = (int) $data->confirmations;
+		$exp = pow(10, $data->inTransaction->exp);
+		$amount = $data->inTransaction->amount / $exp;
 
 		// Update the number of confirmations
 		$record->confirmations = $confirmations;
 
 		// If the amount paid doesn't match the amount required, error
-		if ($record->amount != $amount) {
-			$record->message = [
-				'type' => 'error',
-				'message' => 'Amount paid does not match amount required for order ' . $orderId,
-			];
-			$record->save();
-
-			CommercePayBearPlugin::log(
-				$record->message['message'],
-				LogLevel::Error,
-				true
-			);
-			return;
-		}
+//		if ($record->amount < $amount) {
+//			$record->message = [
+//				'type' => 'error',
+//				'message' => 'Amount (' . $amount . ') paid does not match amount required for order ' . $orderId . ' (' . $record->amount . ')',
+//			];
+//			$record->save();
+//
+//			CommercePayBearPlugin::log(
+//				$record->message['message'],
+//				LogLevel::Error,
+//				true
+//			);
+//
+//			die('Amount paid does not match amount required for order');
+//		}
 
 		// If the confirmations are below the required amount, wait
 		if ($record->confirmations < $record->maxConfirmations) {
@@ -162,7 +177,8 @@ class CommercePayBearController extends BaseController {
 				'message' => 'Waiting for confirmations',
 			];
 			$record->save();
-			return;
+
+			die('waiting for confirmations');
 		}
 
 		$record->message = [
@@ -171,9 +187,26 @@ class CommercePayBearController extends BaseController {
 		];
 		$record->save();
 
-		// TODO: Add transaction to order
+		// Create transaction & complete order
+		$paymentMethod = $this->_getPaymentMethod();
+		craft()->commerce_cart->setPaymentMethod($order, $paymentMethod->id);
 
-		craft()->commerce_orders->completeOrder($order);
+		/** @var BasePaymentFormModel $paymentForm */
+		$paymentForm = new OffsitePaymentFormModel();
+		$paymentForm->populateModelFromPost($order->getContent());
+
+		if (craft()->commerce_payments->processPayment($order, $paymentForm)) {
+			craft()->commerce_orders->completeOrder($order);
+			die($invoice);
+		} else {
+			CommercePayBearPlugin::log(
+				print_r($paymentForm->getErrors(), true),
+				LogLevel::Error,
+				true
+			);
+		}
+
+		die('Something\'s gone wrong!');
 	}
 
 	/**
@@ -182,37 +215,34 @@ class CommercePayBearController extends BaseController {
 	 *
 	 * @throws HttpException
 	 */
-	public function actionGetPayment ()
+	public function actionStatus ()
 	{
 		$orderId = craft()->request->getRequiredParam('orderId');
-		/** @var Commerce_OrderModel $order */
-		$order = craft()->commerce_orders->getOrderById($orderId);
-
-		if (!$order) {
-			$this->returnErrorJson('Unable to find order with ID: ' . $orderId);
-			return;
-		}
 
 		/** @var CommercePayBearRecord $record */
 		$record = CommercePayBearRecord::model()->findByAttributes([
 			'orderId' => $orderId,
 		]);
 
-		if ($record) {
-			$this->returnErrorJson('Unable to find payment record for order with ID: ' . $orderId);
-			return;
-		}
+		$confirmations = $record->confirmations;
+		$max = $record->maxConfirmations;
 
-		$this->returnJson([
-			'confirmations' => $record->confirmations,
-			'maxConfirmations' => $record->maxConfirmations,
-			'message' => $record->message,
-		]);
+		$return = [
+			'success' => $confirmations >= $max,
+		];
+
+		if ($confirmations > 0 || $record->message != null)
+			$return['confirmations'] = $confirmations;
+
+		$this->returnJson($return);
 	}
 
 	// Private
 	// =========================================================================
 
+	/**
+	 * @return array
+	 */
 	private function _getCurrencies ()
 	{
 		static $currencies = false;
@@ -237,7 +267,7 @@ class CommercePayBearController extends BaseController {
 		if (!$currencies) {
 			$url = sprintf(
 				'https://api.paybear.io/v2/currencies?token=%s',
-				craft()->config->get('apiKey', 'commercepaybear')
+				$this->_getPaymentMethod()->settings['apiSecretKey']
 			);
 
 			if ($response = @file_get_contents($url)) {
@@ -252,9 +282,28 @@ class CommercePayBearController extends BaseController {
 		foreach ($currencies as $key => $value) {
 			$ret[$key] = $value;
 			$ret[$key]['mid'] = $rates[$key]['mid'];
+			$ret[$key]['coinsValue'] = $cart->totalPrice / (float) $rates[$key]['mid'];
+			$ret[$key]['currencyUrl'] = UrlHelper::getActionUrl(
+				'CommercePayBear/payment',
+				[
+					'orderId' => $cart->id,
+					'code' => $key,
+				]
+			);
 		}
 
 		return $ret;
+	}
+
+	/**
+	 * Get's the PayBear payment method
+	 *
+	 * @return Commerce_PaymentMethodModel
+	 */
+	private function _getPaymentMethod ()
+	{
+		$id = craft()->config->get('paymentMethodId', 'commercepaybear');
+		return craft()->commerce_paymentMethods->getPaymentMethodById($id);
 	}
 
 }
