@@ -5,7 +5,7 @@ PayBear.io integration with Craft Commerce.
 
 1. Install
 2. Create a PayBear payment method in Commerce
-3. Put the ID of the payment method in `craft/config/commercepaybear.php` (copy from `config.php` in the plugin folder).
+3. Put the ID of the payment method in `craft/config/commercepaybear.php` (copy from [`config.php`](https://github.com/ethercreative/commerce-paybear/blob/master/commercepaybear/config.php) in the plugins folder).
 4. Add the following code into your checkout payment page:
 ```twig
 {{ craft.commercepaybear.embed({
