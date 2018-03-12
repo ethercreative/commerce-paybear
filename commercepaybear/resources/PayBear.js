@@ -41,6 +41,8 @@ function PayBear (targetElement, actionTrigger, csrf) {
 /**
  * Sets the amount to charge. Will reset the UI.
  *
+ * TODO: Convert amount to USD
+ *
  * @param {Number} amount - The amount to charge
  */
 PayBear.prototype.setAmount = function (amount) {
@@ -469,6 +471,13 @@ PayBear.prototype._getCryptoAmount = function () {
 	return (this.state.amount / this.state.selectedCurrency.mid).toFixed(8);
 };
 
+/**
+ * Ensures the payment amount is equal to or above the given currencies minimum
+ *
+ * @param curr
+ * @return {boolean}
+ * @private
+ */
 PayBear.prototype._isAboveMinimum = function (curr) {
 	const amount = (this.state.amount / curr.mid).toFixed(8);
 	return amount >= curr.minimum;
