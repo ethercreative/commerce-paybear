@@ -25,10 +25,10 @@ return [
 	// ...
 
 	'enableCsrfProtection' => (
-    	!isset($_SERVER['REQUEST_URI']) ||
-    	(
-    		!strpos($_SERVER['REQUEST_URI'], 'CommercePayBear/callback')
-    	)
-    ),
+		!isset($_SERVER['REQUEST_URI']) ||
+		(
+			!strpos($_SERVER['REQUEST_URI'], 'CommercePayBear/callback')
+		)
+	),
 ];
 ``` 
